@@ -57,7 +57,7 @@
           <execution>
             <id>default-cli</id>
             <configuration>
-              <mainClass>com.semestr.</mainClass>
+              <mainClass>com.semestr.Test1</mainClass>
             </configuration>
           </execution>
         </executions>
