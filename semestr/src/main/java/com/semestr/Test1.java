@@ -18,7 +18,7 @@ public class Test1 extends Application {
         //cоздание сцены
         Scene scene = new Scene(root, 400, 400);
         //настраиваем и показываем окно
-        primaryStage.setTitle("Шаг 1: Тест Доски");
+        primaryStage.setTitle("Тест Доски");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
