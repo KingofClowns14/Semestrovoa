@@ -9,11 +9,11 @@ import java.util.List;
 public class Server {
     private static final int PORT = 5555;
     //список подключённых игроков
-    private List<ClientHandler> player = new ArrayList<>();
+    private List<ClientHandler> players = new ArrayList<>();
     //сколько игроков нажали "READY"
     private int readyCount = 0;
     public static void main(String[] args) {
-        new BattleshipServer().start();
+        new Server().start();
     }
     public void start() {
         System.out.println("Сервер запущен. Ждём 2 игроков...");
@@ -21,7 +21,7 @@ public class Server {
             //принимаем ровно 2 подключения
             while (players.size() < 2) {
                 Socket socket = serverSocket.accept();
-                ClientHandler player = new ClientHandler(socket, player.size() + 1);
+                ClientHandler player = new ClientHandler(socket, players.size() + 1);
                 players.add(player);
                 new Thread(player).start(); //запуск потока для игрока
                 System.out.println("Игрок #" + player.id + " подключился.");
@@ -38,13 +38,13 @@ public class Server {
         if (readyCount == 2) {
             System.out.println("Оба готовы! Начинаем игру.");
             //первый игрок ходит первым
-            player.get(0).sendMessage("GAME_START YOUR_TURN");
+            players.get(0).sendMessage("GAME_START YOUR_TURN");
             //второй игрок ходит вторым
-            player.get(1).sendMessage("GAME_START OPPONENT_TURN");
+            players.get(1).sendMessage("GAME_START OPPONENT_TURN");
         }
     }
     //внутренний класс, который общается одним конкретным клиентом
-    private static class ClientHandler implements Runnable {
+    private class ClientHandler implements Runnable {
         private Socket socket;
         private PrintWriter out;
         private BufferedReader in;

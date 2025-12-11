@@ -14,6 +14,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -35,6 +36,7 @@ public class BattleshipGame extends Application {
     private final int[] shipsToPlace = { 5, 4, 3, 2, 1 };
     private int currentShipIndex = 0;// Номер корабля
     private boolean setupPhase = true;// Проверка фазы расстановки
+    private boolean myTurn = false;// Проверка чей ход
 
     public static void main(String[] args) {
         launch(args);
@@ -77,8 +79,42 @@ public class BattleshipGame extends Application {
             out.println("NICK " + nickname);
             // Переход к игре
             Platform.runLater(this::showGameScreen);
+            listenForServer();
         } catch (Exception e) {
             Platform.runLater(() -> status.setText("Ошибка Сети"));
+        }
+    }
+
+    // Listener
+    private void listenForServer() {
+        try {
+            String line;
+            while ((line = in.readLine()) != null) {
+                String msg = line;
+                Platform.runLater(() -> processMessage(msg));
+            }
+        } catch (IOException e) {
+            System.out.println("Connection lost");
+        }
+    }
+
+    // Executor
+    private void processMessage(String msg) {
+        System.out.println("Message from the server" + msg);
+        String[] parts = msg.split("");
+        String cmd = parts[0];
+        switch (cmd) {
+            case "GAME_START":
+                if (parts[1].equals("YOUR_TURN")) {
+                    myTurn = true;
+                    infoLabel.setText("ВАШ ХОД! Атакуйте врага.");
+                    infoLabel.setTextFill(Color.GREEN);
+                } else {
+                    myTurn = false;
+                    infoLabel.setText("ХОД ПРОТИВНИКА. Ждите.");
+                    infoLabel.setTextFill(Color.RED);
+                }
+                break;
         }
     }
 
@@ -132,9 +168,16 @@ public class BattleshipGame extends Application {
                     out.println("READY"); // Отправляем серверу сигнал
                     System.out.println("Отправлено: READY");
                 } else {
-                    infoLabel.setText("Поставьте корабль длиной" +shipsToPlace[currentShipIndex]);
+                    infoLabel.setText("Поставьте корабль длиной" + shipsToPlace[currentShipIndex]);
                 }
             }
         }
+    }
+
+    @Override
+    public void stop() throws Exception {
+        if (socket != null)
+            socket.close();
+        super.stop();
     }
 }
