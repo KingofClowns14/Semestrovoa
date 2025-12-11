@@ -3,53 +3,77 @@ package com.semestr;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Server {
     private static final int PORT = 5555;
+    //список подключённых игроков
+    private List<ClientHandler> player = new ArrayList<>();
+    //сколько игроков нажали "READY"
+    private int readyCount = 0;
     public static void main(String[] args) {
-        System.out.println("Запускаем сервер на порту " + PORT + "...");
-        //try-with-resources автоматически закроет сокет, если сервер упадет
+        new BattleshipServer().start();
+    }
+    public void start() {
+        System.out.println("Сервер запущен. Ждём 2 игроков...");
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Сервер ждет подключений.");
-            //бесконечный цикл, сервер всегда работает
-            while (true) {
-                //ожидание подключения (программа замирает на этой строке)
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("Новый клиент подключился!");
-                //как только кто-то подключился, создаем для него персонального "менеджера"
-                ClientHandler handler = new ClientHandler(clientSocket);
-                //запускаем "менеджера" в отдельном потоке
-                new Thread(handler).start();
+            //принимаем ровно 2 подключения
+            while (players.size() < 2) {
+                Socket socket = serverSocket.accept();
+                ClientHandler player = new ClientHandler(socket, player.size() + 1);
+                players.add(player);
+                new Thread(player).start(); //запуск потока для игрока
+                System.out.println("Игрок #" + player.id + " подключился.");
             }
+            System.out.println("Комната полна!");
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+    //метод вызывается, когда игрок присылает "READY"
+    private synchronized void onPlayerReady() {
+        readyCount++;
+        System.out.println("Готовых игроков: " + readyCount);
+        if (readyCount == 2) {
+            System.out.println("Оба готовы! Начинаем игру.");
+            //первый игрок ходит первым
+            player.get(0).sendMessage("GAME_START YOUR_TURN");
+            //второй игрок ходит вторым
+            player.get(1).sendMessage("GAME_START OPPONENT_TURN");
         }
     }
     //внутренний класс, который общается одним конкретным клиентом
     private static class ClientHandler implements Runnable {
         private Socket socket;
-        public ClientHandler(Socket socket) {
+        private PrintWriter out;
+        private BufferedReader in;
+        public int id;
+        public ClientHandler(Socket socket, int id) {
             this.socket = socket;
+            this.id = id;
         }
         @Override
         public void run() {
             try {
-                //настраиваем каналы для общения
-                //читаем от клиента
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                //пишем клиенту (autoFlush = true, чтобы сообщение улетало сразу)
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                out.println("Привет! Ты подключился к Эхо-Серверу.");
-                String message;
-                //читаем сообщения, пока клиент не отключится
-                while ((message = in.readLine()) != null) {
-                    System.out.println("Клиент пишет: " + message);
-                    //отправляем ответ обратно (эхо)
-                    out.println("Эхо: " + message);
+                out = new PrintWriter(socket.getOutputStream(), true);
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String line;
+                while ((line = in.readLine()) != null) {
+                    //логика обработки сообщений
+                    if (line.startsWith("NICK")) {
+                        System.out.println("Игрок #" + id + " выбрал ник: " + line.substring(5));
+                    } else if (line.equals("READY")) {
+                        //сообщение главному серверу, что этот игрок готов
+                        onPlayerReady();
+                    }
                 }
             } catch (IOException e) {
-                System.out.println("Клиент отключился.");
+                System.out.println("Игрок #" + id + " отключился.");
             }
+        }
+        public void sendMessage(String msg) {
+            out.println(msg);
         }
     }
 }
