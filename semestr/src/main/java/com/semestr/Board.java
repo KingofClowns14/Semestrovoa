@@ -10,19 +10,20 @@ import javafx.scene.shape.Rectangle;
 
 public class Board extends Parent {
     private VBox rows = new VBox();
-    //флаг: если враг, то не будет видно его кораблей при расстановке
     private boolean isEnemy;
-    //конструктор теперь принимает обработчик мышки
+    //счёт сколько осталось кораблей
+    public int shipsAliveParts = 0;
     public Board(boolean isEnemy, EventHandler<? super MouseEvent> handler) {
         this.isEnemy = isEnemy;
         for (int y = 0; y < 10; y++) {
             HBox row = new HBox();
             for (int x = 0; x < 10; x++) {
                 Cell c = new Cell(x, y);
-                //передача кликов и движения мыши в главный класс
                 c.setOnMouseClicked(handler);
-                c.setOnMouseEntered(handler);
-                c.setOnMouseExited(handler);
+                if (!isEnemy) {
+                    c.setOnMouseEntered(handler);
+                    c.setOnMouseExited(handler);
+                }
                 row.getChildren().add(c);
             }
             rows.getChildren().add(row);
@@ -33,6 +34,11 @@ public class Board extends Parent {
     public Cell getCell(int x, int y) {
         if (x < 0 || x >= 10 || y < 0 || y >= 10) return null;
         return (Cell) ((HBox) rows.getChildren().get(y)).getChildren().get(x);
+    }
+    //метод для покраски клеток
+    public void paintCell(int x, int y, Color color) {
+        Cell c = getCell(x, y);
+        if (c != null) c.setFill(color); 
     }
     //проверка на существование и свободу клетки
     public boolean isValidPlacement(int x, int y, int size) {
@@ -50,8 +56,20 @@ public class Board extends Parent {
             Cell c = getCell(x + i, y);
             c.hasShip = true;
             if (!isEnemy) c.setFill(Color.GRAY); //покрас в серый
+            shipsAliveParts++;
         }
         return true;
+    }
+    public void clearColors() {
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 10; x++) {
+                Cell c = getCell(x, y);
+                //не сбрасывается цвет, если попасть в клетку в которую уже стреляли
+                if (!c.wasShot) {
+                    c.setFill(c.hasShip && !isEnemy ? Color.GRAY : Color.LIGHTBLUE);
+                }
+            }
+        }
     }
     //подсветка при наведении
     public void highlight(int x, int y, int size) {
@@ -63,23 +81,10 @@ public class Board extends Parent {
             }
         }
     }
-    //убрать подсветку
-    public void clearColors() {
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 10; x++) {
-                Cell c = getCell(x, y);
-                if (c.hasShip) {
-                    c.setFill(isEnemy ? Color.LIGHTBLUE : Color.GRAY);
-                } else {
-                    c.setFill(Color.LIGHTBLUE);
-                }
-                c.setStroke(Color.BLACK);
-            }
-        }
-    }
     public class Cell extends Rectangle {
         public int x, y;
         public boolean hasShip = false;
+        public boolean wasShot = false;
         public Cell(int x, int y) {
             super(30, 30); //размер клетки 30x30 пикселей
             this.x = x;

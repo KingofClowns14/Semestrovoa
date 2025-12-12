@@ -16,7 +16,7 @@ public class Server {
         new Server().start();
     }
     public void start() {
-        System.out.println("Сервер запущен. Ждём 2 игроков...");
+        System.out.println("Сервер запущен...");
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             //принимаем ровно 2 подключения
             while (players.size() < 2) {
@@ -24,17 +24,23 @@ public class Server {
                 ClientHandler player = new ClientHandler(socket, players.size() + 1);
                 players.add(player);
                 new Thread(player).start(); //запуск потока для игрока
-                System.out.println("Игрок #" + player.id + " подключился.");
+                System.out.println("Игрок подключился.");
             }
-            System.out.println("Комната полна!");
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+    //метод рассылки сообщений
+    private synchronized void broadcast(String msg, ClientHandler sender) {
+        for (ClientHandler p : players) {
+            if (p != sender) {
+                p.sendMessage(msg);
+            }
         }
     }
     //метод вызывается, когда игрок присылает "READY"
     private synchronized void onPlayerReady() {
         readyCount++;
-        System.out.println("Готовых игроков: " + readyCount);
         if (readyCount == 2) {
             System.out.println("Оба готовы! Начинаем игру.");
             //первый игрок ходит первым
@@ -62,14 +68,15 @@ public class Server {
                 while ((line = in.readLine()) != null) {
                     //логика обработки сообщений
                     if (line.startsWith("NICK")) {
-                        System.out.println("Игрок #" + id + " выбрал ник: " + line.substring(5));
                     } else if (line.equals("READY")) {
                         //сообщение главному серверу, что этот игрок готов
                         onPlayerReady();
+                    } else {
+                        broadcast(line, this);
                     }
                 }
             } catch (IOException e) {
-                System.out.println("Игрок #" + id + " отключился.");
+                System.out.println("Игрок отключился.");
             }
         }
         public void sendMessage(String msg) {
