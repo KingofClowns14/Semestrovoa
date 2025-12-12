@@ -52,23 +52,22 @@ public class BattleshipGame extends Application {
     private void showLoginScreen() {
         window.setTitle("Морской Бой - Вход");
         TextField nickField = new TextField();
+        nickField.setMaxWidth(200);
         Button btn = new Button("Играть");
-        Label status = new Label("");
-        status.setTextFill(Color.RED);
+        VBox root = new VBox(10, new Label("НИК"), nickField, btn);
+        root.setAlignment(Pos.CENTER);
         // Действие при нажатии на кнопку
         btn.setOnAction(e -> {
             nickname = nickField.getText();
             if (!nickname.isEmpty())
-                new Thread(() -> connect(status)).start();
+                new Thread(this::connect).start();
         });
-        VBox root = new VBox(10, new Label("Ник:"), nickField, btn, status);
-        root.setAlignment(Pos.CENTER);
         window.setScene(new Scene(root, 300, 200));
         window.show();
     }
 
     // CONNECT
-    private void connect(Label status) {
+    private void connect() {
         try {
             // Создание сокета
             socket = new Socket(SERVER_HOST, SERVER_PORT);
@@ -81,7 +80,7 @@ public class BattleshipGame extends Application {
             Platform.runLater(this::showGameScreen);
             listenForServer();
         } catch (Exception e) {
-            Platform.runLater(() -> status.setText("Ошибка Сети"));
+            e.printStackTrace();
         }
     }
 
@@ -101,7 +100,7 @@ public class BattleshipGame extends Application {
     // Executor
     private void processMessage(String msg) {
         System.out.println("Message from the server" + msg);
-        String[] parts = msg.split("");
+        String[] parts = msg.split(" ");
         String cmd = parts[0];
         switch (cmd) {
             case "GAME_START":
@@ -115,6 +114,55 @@ public class BattleshipGame extends Application {
                     infoLabel.setTextFill(Color.RED);
                 }
                 break;
+            // SHOOT
+            case "SHOOT":
+                int x = Integer.parseInt(parts[1]);
+                int y = Integer.parseInt(parts[2]);
+                Board.Cell cell = myBoard.getCell(x, y);
+                cell.wasShot = true;
+                if (cell.hasShip) {
+                    // HIT
+                    cell.setFill(Color.RED);
+                    myBoard.shipsAliveParts--;
+                    if (myBoard.shipsAliveParts <= 0) {
+                        out.println("WINNER");// Сообщаем о поражении
+                        infoLabel.setText("ВЫ ПРОИГРАЛИ :(");
+                        infoLabel.setTextFill(Color.RED);
+                        myBoard.setDisable(true);
+                    } else {
+                        out.println("RESULT HIT " + x + " " + y);
+                        infoLabel.setText("В НАС ПОПАЛИ");
+                    }
+                } else {
+                    // MISS
+                    cell.setFill(Color.BLACK);
+                    out.println("RESULT MISS" + x + " " + y);
+                    myTurn = true;// Передача хода
+                    infoLabel.setText("ВРАГ ПРОМАЗАЛ. ВАШ ХОД");
+                    infoLabel.setTextFill(Color.GREEN);
+                }
+                break;
+            // Получение ответа от сервера о попадании или промахе
+            case "RESULT":
+                int tx = Integer.parseInt(parts[2]);
+                int ty = Integer.parseInt(parts[3]);
+                if (parts[1].equals("HIT")) {
+                    enemyBoard.paintCell(tx, ty, Color.RED);
+                    infoLabel.setText("ЕСТЬ ПОПАДАНИИЕ!");
+                    myTurn = true;
+                } else {
+                    enemyBoard.paintCell(tx, ty, Color.BLACK);
+                    infoLabel.setText("МИМО....... ХОД ПЕРЕШЕЛ СОПЕРНИКУ");
+                    infoLabel.setTextFill(Color.RED);
+                    myTurn = false;
+                }
+                break;
+            case "WINNER":
+                infoLabel.setText("ПОБЕДА!!!!");
+                infoLabel.setTextFill(Color.GOLD);
+                myBoard.setDisable(true);
+                enemyBoard.setDisable(true);
+                break;
         }
     }
 
@@ -125,12 +173,24 @@ public class BattleshipGame extends Application {
         myBoard = new Board(false, e -> handleMyBoardClick(e));
         // Доска врага (true = враг)
         enemyBoard = new Board(true, e -> {
+            if (setupPhase || !myTurn)
+                return;
+            Board.Cell c = (Board.Cell) e.getSource();
+            if (c.wasShot)
+                return;
+            // Временно блокируем, пока ждем ответа
+            myTurn = false;
+            c.wasShot = true;
+            c.setFill(Color.LIGHTGRAY);// Временный цвет
+            out.println("SHOOT " + c.x + " " + c.y);
+            infoLabel.setText("МИМО........");
+            infoLabel.setTextFill(Color.RED);
         });
         VBox left = new VBox(5, new Label("ВЫ"), myBoard);
         VBox right = new VBox(5, new Label("ВРАГ"), enemyBoard);
         HBox boards = new HBox(30, left, right);
         boards.setAlignment(Pos.CENTER);
-        infoLabel.setText("Поставьте корабль длиной" + shipsToPlace[0]);
+        infoLabel.setText("Поставьте корабль длиной " + shipsToPlace[0]);
         infoLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: blue;");
         VBox layout = new VBox(20, infoLabel, boards);
         layout.setAlignment(Pos.CENTER);
@@ -146,18 +206,15 @@ public class BattleshipGame extends Application {
         // Навели мышку -> Подсветка
         if (e.getEventType() == MouseEvent.MOUSE_ENTERED) {
             myBoard.clearColors(); // Сброс старой подсветки
-            int size = shipsToPlace[currentShipIndex];
-            myBoard.highlight(cell.x, cell.y, size);
-        }
-        // Убрали мышку -> Очистка
-        if (e.getEventType() == MouseEvent.MOUSE_EXITED) {
+            myBoard.highlight(cell.x, cell.y, shipsToPlace[currentShipIndex]);
+        } else if (e.getEventType() == MouseEvent.MOUSE_EXITED)// Убрали мышку -> Очистка
+        {
             myBoard.clearColors();
-        }
-        // Кликнули ЛКМ -> Установка
-        if (e.getButton() == MouseButton.PRIMARY && e.getEventType() == MouseEvent.MOUSE_CLICKED) {
-            int size = shipsToPlace[currentShipIndex];
+        } else if (e.getButton() == MouseButton.PRIMARY && e.getEventType() == MouseEvent.MOUSE_CLICKED)// Кликнули ЛКМ
+                                                                                                        // -> Установка
+        {
             // Пробуем поставить
-            if (myBoard.placeShip(cell.x, cell.y, size)) {
+            if (myBoard.placeShip(cell.x, cell.y, shipsToPlace[currentShipIndex])) {
                 // Если успешно:
                 currentShipIndex++; // Переходим к следующему кораблю
                 // Проверяем, остались ли корабли
