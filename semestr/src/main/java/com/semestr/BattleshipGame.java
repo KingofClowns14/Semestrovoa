@@ -37,7 +37,7 @@ public class BattleshipGame extends Application {
     private int currentShipIndex = 0;// Номер корабля
     private boolean setupPhase = true;// Проверка фазы расстановки
     private boolean myTurn = false;// Проверка чей ход
-
+    private boolean vertical = false;
     public static void main(String[] args) {
         launch(args);
     }
@@ -54,7 +54,7 @@ public class BattleshipGame extends Application {
         TextField nickField = new TextField();
         nickField.setMaxWidth(200);
         Button btn = new Button("Играть");
-        VBox root = new VBox(10, new Label("НИК"), nickField, btn);
+        VBox root = new VBox(10, new Label("ВВЕДИТЕ НИК"), nickField, btn);
         root.setAlignment(Pos.CENTER);
         // Действие при нажатии на кнопку
         btn.setOnAction(e -> {
@@ -124,13 +124,13 @@ public class BattleshipGame extends Application {
                     // HIT
                     cell.setFill(Color.RED);
                     myBoard.shipsAliveParts--;
+                    out.println("RESULT HIT "+x+" "+y);
                     if (myBoard.shipsAliveParts <= 0) {
                         out.println("WINNER");// Сообщаем о поражении
                         infoLabel.setText("ВЫ ПРОИГРАЛИ :(");
                         infoLabel.setTextFill(Color.RED);
                         myBoard.setDisable(true);
                     } else {
-                        out.println("RESULT HIT " + x + " " + y);
                         infoLabel.setText("В НАС ПОПАЛИ");
                     }
                 } else {
@@ -190,7 +190,7 @@ public class BattleshipGame extends Application {
         VBox right = new VBox(5, new Label("ВРАГ"), enemyBoard);
         HBox boards = new HBox(30, left, right);
         boards.setAlignment(Pos.CENTER);
-        infoLabel.setText("Поставьте корабль длиной " + shipsToPlace[0]);
+        infoLabel.setText("Поставьте корабль длиной " + shipsToPlace[0]+" ПКМ поворот корбля");
         infoLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: blue;");
         VBox layout = new VBox(20, infoLabel, boards);
         layout.setAlignment(Pos.CENTER);
@@ -202,19 +202,26 @@ public class BattleshipGame extends Application {
         // Если расстановка закончена, ничего не делаем
         if (!setupPhase)
             return;
+        //Поворот коробля (ПКМ)
         Board.Cell cell = (Board.Cell) e.getSource();
         // Навели мышку -> Подсветка
-        if (e.getEventType() == MouseEvent.MOUSE_ENTERED) {
+        if (e.getEventType() == MouseEvent.MOUSE_CLICKED && e.getButton()==MouseButton.SECONDARY) {
+            vertical =!vertical;//Переключение 
             myBoard.clearColors(); // Сброс старой подсветки
-            myBoard.highlight(cell.x, cell.y, shipsToPlace[currentShipIndex]);
-        } else if (e.getEventType() == MouseEvent.MOUSE_EXITED)// Убрали мышку -> Очистка
+            myBoard.highlight(cell.x, cell.y, shipsToPlace[currentShipIndex],vertical);
+            return;
+        } else if (e.getEventType() == MouseEvent.MOUSE_ENTERED)// // Навели мышку -> Подсветка 
         {
             myBoard.clearColors();
-        } else if (e.getButton() == MouseButton.PRIMARY && e.getEventType() == MouseEvent.MOUSE_CLICKED)// Кликнули ЛКМ
-                                                                                                        // -> Установка
+            myBoard.highlight(cell.x, cell.y, shipsToPlace[currentShipIndex],vertical);
+        } else if (e.getEventType()==MouseEvent.MOUSE_EXITED)//Убрали мышку -> Очистка
+        {
+            myBoard.clearColors();
+        }
+        else if (e.getButton() == MouseButton.PRIMARY && e.getEventType() == MouseEvent.MOUSE_CLICKED)// Кликнули ЛКМ -> Установка
         {
             // Пробуем поставить
-            if (myBoard.placeShip(cell.x, cell.y, shipsToPlace[currentShipIndex])) {
+            if (myBoard.placeShip(cell.x, cell.y, shipsToPlace[currentShipIndex],vertical)) {
                 // Если успешно:
                 currentShipIndex++; // Переходим к следующему кораблю
                 // Проверяем, остались ли корабли
@@ -225,7 +232,7 @@ public class BattleshipGame extends Application {
                     out.println("READY"); // Отправляем серверу сигнал
                     System.out.println("Отправлено: READY");
                 } else {
-                    infoLabel.setText("Поставьте корабль длиной" + shipsToPlace[currentShipIndex]);
+                    infoLabel.setText("Поставьте корабль длиной " + shipsToPlace[currentShipIndex]+" ПКМ поворот корбля");
                 }
             }
         }
