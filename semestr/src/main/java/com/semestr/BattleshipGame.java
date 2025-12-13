@@ -54,17 +54,45 @@ public class BattleshipGame extends Application {
         window.setTitle("Морской Бой - Вход");
         TextField nickField = new TextField();
         nickField.setMaxWidth(200);
+        // Для вывода ошибок
+        Label errorLabel = new Label();
+        errorLabel.setTextFill(Color.RED);
         Button btn = new Button("Играть");
-        VBox root = new VBox(10, new Label("ВВЕДИТЕ НИК"), nickField, btn);
+        VBox root = new VBox(10, new Label("ВВЕДИТЕ НИК"), nickField, errorLabel, btn);
         root.setAlignment(Pos.CENTER);
         // Действие при нажатии на кнопку
         btn.setOnAction(e -> {
-            nickname = nickField.getText();
-            if (!nickname.isEmpty())
+            String inputNick = nickField.getText().trim();// Убираем пробелы по краям
+            if (isValidNickname(inputNick)) {
+                nickname = inputNick;
+                btn.setDisable(true);
+                errorLabel.setText("Подключение...");
+                errorLabel.setTextFill(Color.BLACK);
                 new Thread(this::connect).start();
+            } else {
+                errorLabel.setText("Некорректный ник! \nТолько буквы и цифры и \"_\" и тчка Макс длина 15 символов");
+                errorLabel.setTextFill(Color.RED);
+            }
         });
-        window.setScene(new Scene(root, 300, 200));
+        window.setScene(new Scene(root, 350, 300));
         window.show();
+    }
+
+    private boolean isValidNickname(String nick) {
+        if (nick == null || nick.isEmpty())
+            return false;
+        if (nick.length() > 15)
+            return false;// Макс длина 15 символов
+        /*
+         * Regex Разрешает только
+         * a-z A-Z английские буквы
+         * а-я А-Я русские буквы
+         * 0-9 цифры
+         * - _ нижнее подчеркивание
+         * ^ - начало строки
+         * $ - конец строки
+         */
+        return nick.matches("^[a-zA-Zа-яА-Я0-9-_\\.]+$");
     }
 
     // CONNECT
