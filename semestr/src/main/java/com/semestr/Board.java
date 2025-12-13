@@ -32,33 +32,69 @@ public class Board extends Parent {
     }
     //получение клетку по координатам с защитой от вылета за границы
     public Cell getCell(int x, int y) {
-        if (x < 0 || x >= 10 || y < 0 || y >= 10) return null;
+        if (!isValidPoint(x, y)) return null;
         return (Cell) ((HBox) rows.getChildren().get(y)).getChildren().get(x);
+    }
+    //вспомогательный метод, проверяет, находится ли координата  внутри поля 10х10
+    private boolean isValidPoint(int x, int y) {
+        return x >= 0 && x < 10 && y >= 0 && y< 10;
     }
     //метод для покраски клеток
     public void paintCell(int x, int y, Color color) {
         Cell c = getCell(x, y);
         if (c != null) c.setFill(color); 
     }
-    //проверка на существование и свободу клетки
-    public boolean isValidPlacement(int x, int y, int size) {
+    //проверка, можно ли ставить корабль
+    public boolean isValidPlacement(int x, int y, int size, boolean vertical) {
         for (int i = 0; i< size; i++) {
-            Cell c = getCell(x + i, y);
-            //если вышло за карту или клетка занята, то нельзя
-            if (c == null || c.hasShip) return false;
+            //вычисление координаты текущего корабля
+            int cx = vertical ? x : x + i;
+            int cy = vertical ? y + i : y;
+            //проверка границ
+            if (!isValidPoint(cx, cy)) return false;
+            //проверка занятости клетки
+            Cell cell = getCell(cx, cy);
+            if (cell.hasShip) return false;
+            //проверка соседей и квадрата 3х3 вокруг точки (cx, cy)
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    int nx = cx + dx;
+                    int ny = cy + dy;
+                    //если сосед существует и это не мы сами
+                    if (isValidPoint(nx, ny)) {
+                        if (getCell(nx, ny).hasShip) return false;
+                    }
+                }
+            }
         }
         return true;
     }
     //поставить корабль
-    public boolean placeShip(int x, int y, int size) {
-        if (!isValidPlacement(x, y, size)) return false;
+    public boolean placeShip(int x, int y, int size, boolean vertical) {
+        if (!isValidPlacement(x, y, size, vertical)) return false;
         for (int i = 0; i < size; i++) {
-            Cell c = getCell(x + i, y);
-            c.hasShip = true;
-            if (!isEnemy) c.setFill(Color.GRAY); //покрас в серый
+            int cx = vertical ? x : x + i;
+            int cy = vertical ? y + i : y;
+            Cell cell = getCell(cx, cy);
+            cell.hasShip = true;
+            if (!isEnemy) cell.setFill(Color.GRAY); //покрас в серый
             shipsAliveParts++;
         }
         return true;
+    }
+    //подсветка с учётом vertical
+    public void highlight(int x, int y, int size, boolean vertical) {
+        boolean valid = isValidPlacement(x, y, size, vertical);
+        for (int i = 0; i < size; i++) {
+            int cx = vertical ? x : x + i;
+            int cy = vertical ? y + i : y;
+            if (isValidPoint(cx, cy)) {
+                Cell cell = getCell(cx, cy);
+                if (!cell.hasShip) {
+                    cell.setFill(valid ? Color.LIGHTGREEN : Color.SALMON);
+                }
+            }
+        }
     }
     public void clearColors() {
         for (int y = 0; y < 10; y++) {
@@ -68,16 +104,6 @@ public class Board extends Parent {
                 if (!c.wasShot) {
                     c.setFill(c.hasShip && !isEnemy ? Color.GRAY : Color.LIGHTBLUE);
                 }
-            }
-        }
-    }
-    //подсветка при наведении
-    public void highlight(int x, int y, int size) {
-        boolean valid = isValidPlacement(x, y, size);
-        for (int i = 0; i < size; i++) {
-            Cell c = getCell(x + i, y);
-            if (c != null && !c.hasShip) {
-                c.setFill(valid ? Color.LIGHTGREEN : Color.SALMON);
             }
         }
     }
