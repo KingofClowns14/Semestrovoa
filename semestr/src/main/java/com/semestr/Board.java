@@ -13,7 +13,7 @@ public class Board extends Parent {
     private boolean isEnemy;
     // счёт сколько осталось кораблей
     public int shipsAliveParts = 0;
-
+    // в каждую клетку добавляется обработчик мыши
     public Board(boolean isEnemy, EventHandler<? super MouseEvent> handler) {
         this.isEnemy = isEnemy;
         for (int y = 0; y < 10; y++) {
@@ -96,7 +96,7 @@ public class Board extends Parent {
         return true;
     }
 
-    // подсветка с учётом vertical
+    // подсветка нахождения корабля с учётом vertical
     public void highlight(int x, int y, int size, boolean vertical) {
         boolean valid = isValidPlacement(x, y, size, vertical);
         for (int i = 0; i < size; i++) {

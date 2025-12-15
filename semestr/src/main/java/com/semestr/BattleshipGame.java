@@ -70,7 +70,7 @@ public class BattleshipGame extends Application {
                 errorLabel.setTextFill(Color.BLACK);
                 new Thread(this::connect).start();
             } else {
-                errorLabel.setText("Некорректный ник! \nТолько буквы и цифры и \"_\" и тчка Макс длина 15 символов");
+                errorLabel.setText("Некорректный ник! \nТолько буквы и цифры и \"_\" и точка \nМаксимальная длина 15 символов");
                 errorLabel.setTextFill(Color.RED);
             }
         });
@@ -160,7 +160,7 @@ public class BattleshipGame extends Application {
                         infoLabel.setTextFill(Color.RED);
                         myBoard.setDisable(true);
                     } else {
-                        infoLabel.setText("В НАС ПОПАЛИ");
+                        infoLabel.setText("В НАС ПОПАЛИ!");
                     }
                 } else {
                     // MISS
@@ -177,11 +177,11 @@ public class BattleshipGame extends Application {
                 int ty = Integer.parseInt(parts[3]);
                 if (parts[1].equals("HIT")) {
                     enemyBoard.paintCell(tx, ty, Color.RED);
-                    infoLabel.setText("ЕСТЬ ПОПАДАНИИЕ!");
+                    infoLabel.setText("ЕСТЬ ПОПАДАНИЕ!");
                     myTurn = true;
                 } else {
                     enemyBoard.paintCell(tx, ty, Color.BLACK);
-                    infoLabel.setText("МИМО....... ХОД ПЕРЕШЕЛ СОПЕРНИКУ");
+                    infoLabel.setText("МИМО....... ХОД ПЕРЕШЁЛ СОПЕРНИКУ");
                     infoLabel.setTextFill(Color.RED);
                     myTurn = false;
                 }
@@ -257,7 +257,7 @@ public class BattleshipGame extends Application {
                 if (currentShipIndex >= shipsToPlace.length) {
                     setupPhase = false;
                     myBoard.clearColors();
-                    infoLabel.setText("Расстановка завершена! Ждем врага...");
+                    infoLabel.setText("Расстановка завершена! Ждём врага...");
                     out.println("READY"); // Отправляем серверу сигнал
                     System.out.println("Отправлено: READY");
                 } else {
